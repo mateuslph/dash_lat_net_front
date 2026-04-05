@@ -1,141 +1,100 @@
-import { useMemo, useState } from "react";
-import { usePing } from "../../hooks/usePing";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+// Dashboard.tsx
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { Line, Pie, Bar } from "react-chartjs-2";
+import "chart.js/auto";
+import { Container, Grid, Paper, Typography, Table, TableHead, TableRow, TableCell, TableBody } from "@mui/material";
+
+interface PingResponseDTO {
+  host: string;
+  reachable: boolean;
+  latency: number | null;
+}
 
 export default function Dashboard() {
-  // Estado que controla se o modo escuro está ativo ou não (começa desativado)
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [data, setData] = useState<PingResponseDTO[]>([]);
+  const host = "google.com";
 
-  const hosts = ["8.8.8.8", "1.1.1.1"];
-  const rawData = usePing(hosts);
-
-  const chartData = useMemo(() => {
-    const grouped = rawData.reduce((acc: any, current) => {
-      const latencyValue = current.latency === -1 ? null : current.latency;
-
-      if (!acc[current.time]) {
-        acc[current.time] = { time: current.time };
+  useEffect(() => {
+    const fetchPing = async () => {
+      try {
+        const res = await axios.get<PingResponseDTO>(`http://localhost:8080/api/ping/${host}`);
+        setData((prev) => [...prev, res.data]);
+      } catch (err) {
+        console.error(err);
       }
-      
-      acc[current.time][current.host] = latencyValue;
-      return acc;
-    }, {});
+    };
+    const interval = setInterval(fetchPing, 20000);
+    return () => clearInterval(interval);
+  }, []);
 
-    return Object.values(grouped);
-  }, [rawData]);
+  const successCount = data.filter((d) => d.reachable).length;
+  const failCount = data.length - successCount;
+  const avgLatency = data.reduce((acc, d) => acc + (d.latency ?? 0), 0) / (data.length || 1);
 
-  // Paleta de cores dinâmica baseada no estado isDarkMode
-  const theme = {
-    background: isDarkMode ? "#121212" : "#f4f4f9",
-    cardBg: isDarkMode ? "#1e1e1e" : "#ffffff",
-    text: isDarkMode ? "#e0e0e0" : "#333333",
-    grid: isDarkMode ? "#333333" : "#e0e0e0",
-    axisText: isDarkMode ? "#aaaaaa" : "#666666",
+  const lineData = {
+    labels: data.map((_, i) => i + 1),
+    datasets: [{ label: "Latência (ms)", data: data.map((d) => d.latency ?? 0), borderColor: "blue" }],
+  };
+
+  const pieData = {
+    labels: ["Sucesso", "Falha"],
+    datasets: [{ data: [successCount, failCount], backgroundColor: ["green", "red"] }],
+  };
+
+  const barData = {
+    labels: ["Média de Latência"],
+    datasets: [{ label: "ms", data: [avgLatency], backgroundColor: "orange" }],
   };
 
   return (
-    <div style={{ 
-      padding: "2rem", 
-      fontFamily: "sans-serif", 
-      backgroundColor: theme.background, 
-      color: theme.text,
-      minHeight: "100vh",
-      transition: "background-color 0.3s ease, color 0.3s ease" // Transição suave
-    }}>
-      
-      {/* Cabeçalho com o botão de troca de tema */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
-        <h1 style={{ margin: 0 }}>
-          🌐 Monitoramento de Latência
-        </h1>
-        
-        <button 
-          onClick={() => setIsDarkMode(!isDarkMode)}
-          style={{
-            padding: "0.5rem 1rem",
-            fontSize: "1rem",
-            cursor: "pointer",
-            backgroundColor: isDarkMode ? "#333" : "#ddd",
-            color: isDarkMode ? "#fff" : "#333",
-            border: "none",
-            borderRadius: "20px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            transition: "all 0.3s ease"
-          }}
-        >
-          {isDarkMode ? "☀️ Modo Claro" : "🌙 Modo Escuro"}
-        </button>
-      </div>
-
-      {/* Container do Gráfico */}
-      <div style={{ 
-        width: "100%", 
-        height: 450, 
-        backgroundColor: theme.cardBg, 
-        padding: "1.5rem", 
-        borderRadius: "12px", 
-        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-        transition: "background-color 0.3s ease"
-      }}>
-        
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-            {/* Grade adaptável ao tema */}
-            <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
-            
-            {/* Eixos com cor adaptável */}
-            <XAxis dataKey="time" tick={{ fill: theme.axisText, fontSize: 12 }} stroke={theme.grid} />
-            <YAxis 
-              tick={{ fill: theme.axisText, fontSize: 12 }} 
-              stroke={theme.grid}
-              label={{ value: 'Latência (ms)', angle: -90, position: 'insideLeft', fill: theme.axisText }} 
-            />
-            
-            {/* Tooltip (caixinha ao passar o mouse) adaptável */}
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: theme.cardBg, 
-                color: theme.text,
-                borderRadius: "8px", 
-                border: `1px solid ${theme.grid}`,
-                boxShadow: "0 2px 8px rgba(0,0,0,0.15)" 
-              }}
-            />
-            <Legend verticalAlign="top" height={36} wrapperStyle={{ color: theme.text }} />
-
-            <Line 
-              type="monotone" 
-              dataKey="8.8.8.8" 
-              name="Google DNS"
-              stroke="#8884d8" 
-              strokeWidth={3}
-              dot={false}
-              isAnimationActive={false}
-            />
-
-            <Line 
-              type="monotone" 
-              dataKey="1.1.1.1" 
-              name="Cloudflare DNS"
-              stroke="#82ca9d" 
-              strokeWidth={3}
-              dot={false}
-              isAnimationActive={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
+    <Container maxWidth="lg" style={{ marginTop: "20px" }}>
+      <Typography variant="h4" gutterBottom>Dashboard de Ping</Typography>
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={6}>
+          <Paper style={{ padding: "20px" }}>
+            <Typography variant="h6">Latência ao longo do tempo</Typography>
+            <Line data={lineData} />
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Paper style={{ padding: "20px" }}>
+            <Typography variant="h6">Taxa de Sucesso</Typography>
+            <Pie data={pieData} />
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Paper style={{ padding: "20px" }}>
+            <Typography variant="h6">Média de Latência</Typography>
+            <Bar data={barData} />
+          </Paper>
+        </Grid>
+        <Grid item xs={12}>
+          <Paper style={{ padding: "20px" }}>
+            <Typography variant="h6">Histórico de Pings</Typography>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Host</TableCell>
+                  <TableCell>Alcançável</TableCell>
+                  <TableCell>Latência (ms)</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {data.map((d, i) => (
+                  <TableRow key={i}>
+                    <TableCell>{d.host}</TableCell>
+                    <TableCell style={{ color: d.reachable ? "green" : "red" }}>
+                      {d.reachable ? "Sim" : "Não"}
+                    </TableCell>
+                    <TableCell>{d.latency ?? "-"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Paper>
+        </Grid>
+      </Grid>
+    </Container>
   );
 }
