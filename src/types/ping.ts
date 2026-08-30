@@ -1,11 +1,10 @@
-export interface PingResponse {
+export interface PingResponseDTO {
   host: string;
-  latency: number | null;
   reachable: boolean;
+  latency: number | null;
 }
 
-export interface PingData {
-  time: string;
-  host: string;
-  latency: number | null;
-}
+export type LatestPingByHost = Record<
+  string,
+  PingResponseDTO
+>;

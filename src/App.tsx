@@ -3,7 +3,7 @@ import { useState } from "react";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import { Button, Box } from "@mui/material";
-import Dashboard from "./pages/Dashboard/Dashboard";
+import Dashboard from "./pages/Dashboard";
 
 function App() {
   const [darkMode, setDarkMode] = useState(false);

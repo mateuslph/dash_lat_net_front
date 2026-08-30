@@ -1,17 +1,21 @@
-export const buscarPing = async (host: string) => {
-  try {
-    const response = await fetch(`/api/ping?host=${host}`);
+import axios from "axios";
 
-    if (!response.ok) {
-      throw new Error("Erro na API");
-    }
+import { API_URL } from "../config/api";
 
-    const data = await response.json();
+import type {
+  PingResponseDTO,
+} from "../types/ping";
 
-    return data.time ?? -1;
+/**
+ * Busca os logs de ping do backend.
+ */
+export async function getPingLogs(): Promise<
+  PingResponseDTO[]
+> {
+  const response =
+    await axios.get<PingResponseDTO[]>(
+      `${API_URL}/logs`
+    );
 
-  } catch (error) {
-    console.error(error);
-    return -1;
-  }
-};
+  return response.data;
+}
