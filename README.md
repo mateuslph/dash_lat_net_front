@@ -10,6 +10,7 @@ O dashboard apresenta os resultados dos testes de ping realizados pelo servidor,
 
 ## O fluxo de dados fica dessa maneira:
 
+```text
 Spring Boot
      │
      ▼
@@ -29,10 +30,11 @@ Dashboard.tsx
      ├────────► AverageLatencyChart
      ├────────► HostStatusTable
      └────────► PingHistoryTable
-
+```
 
 ## Arquitetura está assim, cada camada possui uma responsabilidade clara:
 
+```text
 Dashboard.tsx
 │
 ├── usePingLogs()
@@ -61,6 +63,7 @@ Dashboard.tsx
 ├── HostStatusTable
 │
 └── PingHistoryTable
+```
 
 ---
 
